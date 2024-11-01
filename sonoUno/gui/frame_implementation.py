@@ -17,6 +17,9 @@ import oct2py
 import re
 import webbrowser
 import os
+#librerias para comunicacion con Arduino
+import time
+import serial
 
 import gui.frame_design as gui
 from data_import.data_import import DataImport
@@ -82,6 +85,8 @@ class SonoUnoGUI (gui.FrameDesign):
                 parent=None
                 )
             self._expdata.writeexception(e)
+        #Comunicacion con Arduino
+        self.arduino = serial.Serial('COM3', 9600) #Colocar 'COM' correcto según configuracion de Arduino
         # Here we generate a dictionary of functions without parameters
         # to use on the command line for the GUI
         # In the user manual there are a list and descriptions of these functions
@@ -779,6 +784,8 @@ class SonoUnoGUI (gui.FrameDesign):
         """
         if self._timer.GetInterval()==self._waitonloop and self.playinloop_state:
             self._timer.Start((self._getVelocity()*2) + 50)
+            #inicializa actuador con timer de sonorizacion
+            self._actuator_init()
         if self.getXActual().any()==None or self.getYActual().any()==None:
             self._expdata.writeinfo("The data has not been imported yet.")
         else:
@@ -848,6 +855,11 @@ class SonoUnoGUI (gui.FrameDesign):
                         )
                 except Exception as e:
                     self._expdata.writeexception(e)
+                #envio frecuencia al actuador a través de Arduino
+                try:
+                    self._actuator(self._getNormY()[timer_index])
+                except Exception as e:
+                    self._expdata.writeexception(e)
             # Update the abscisa position and its text control
             try:
                 self._abspos_slider.SetValue(timer_index)
@@ -865,12 +877,36 @@ class SonoUnoGUI (gui.FrameDesign):
                 if self.playinloop_state:
                     self._tickmark.loop()
                     self._timer.Start(self._waitonloop)
+                    #inicializa actuador con timer de sonorizacion
+                    self._actuator_init() 
                     self._set_timerindex(0)
                     self._abspos_slider.SetValue(0)
                     self._absposlabel_textctrl.SetValue(str(round(self.getXActual()[self._abspos_slider.GetValue()],4)))
                 else:
                     self.stopMethod('2d_basic_xy')
-                
+    
+    def _actuator(self, var2):
+        '''
+        Este metodo envia la frecuencia al actuador a través de Arduino
+        '''
+        var = int((150-60)*(var2)+60)
+        print (var)
+        self.arduino.write(f'{var}\n'.encode())
+
+    def _actuator_stop(self):
+        '''
+        Este metodo detiene el generador de señales a través de Arduino 
+        '''
+        var = 0
+        self.arduino.write(f'{var}\n'.encode())
+
+    def _actuator_init(self):
+        '''
+        Este metodo incializa el generador de señales a través de Arduino 
+        '''
+        var = 1000
+        self.arduino.write(f'{var}\n'.encode())
+
     def _playenvelope_event(self, event):
         
         """
@@ -1720,6 +1756,8 @@ class SonoUnoGUI (gui.FrameDesign):
                     
                 #Seteo el tempo dependiendo del tiempo del timer
                 self._timer.Start((self._getVelocity()*2) + 50)
+                #inicializa actuador con timer de sonorizacion
+                self._actuator_init()
                 self._datasound.reproductor.set_time_base(self._timer.GetInterval()/1000.0)
             else:
                 self._expdata.printoutput("The timer is alredy on when the user press Play button.")
@@ -1766,6 +1804,8 @@ class SonoUnoGUI (gui.FrameDesign):
                     self._playmenuitem.Check(False)
                     #self._datasound.make_sound(0, -1)
                     self._timer.Stop()
+                    #detiene actuador con timer de sonorizacion
+                    self._actuator_stop()
                 else:
                     self._expdata.writeinfo("Error con el contador del botón Play-Pausa")
         else:
@@ -1840,6 +1880,8 @@ class SonoUnoGUI (gui.FrameDesign):
                 self._abspos_slider.SetValue(0)
                 self._absposlabel_textctrl.SetValue(str(round(self.getXActual()[self._abspos_slider.GetValue()],4)))
                 self.replot_xy(self.getXActual(), self.getYActual())
+                #detiene actuador con timer de sonorizacion
+                self._actuator_stop()
 
     def markPoints (self):
         if self.getXActual().any()==None or self.getYActual().any()==None:
@@ -3371,6 +3413,8 @@ class SonoUnoGUI (gui.FrameDesign):
 #            self._expdata.printoutput("Python console text: \n" + text.encode('utf-8'))
 #        except Exception as e:
 #            self._expdata.writeexception(e)
+        #detiene actuador con timer de sonorizacion
+        self._actuator_stop()
         self._timer.Stop()
         self._timer_envelope.Stop()
         if self._filesaved: #cambiar a 'if not' para que pregunte cuando no ha sido salvado.
