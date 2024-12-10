@@ -37,7 +37,6 @@ void loop() {
     freq_Value = data.toFloat();
     SetearFrecuencia(); 
   //delay(100);
- 
   }
 }
 

@@ -86,7 +86,8 @@ class SonoUnoGUI (gui.FrameDesign):
                 )
             self._expdata.writeexception(e)
         #Comunicacion con Arduino
-        self.arduino = serial.Serial('COM3', 9600) #Colocar 'COM' correcto según configuracion de Arduino
+        #self.arduino = serial.Serial('COM3', 9600) #Colocar 'COM' correcto según configuracion de Arduino
+        self.arduino = serial.Serial('/dev/ttyS0', 9600) #Colocar según configuracion de Arduino para Ubuntu
         # Here we generate a dictionary of functions without parameters
         # to use on the command line for the GUI
         # In the user manual there are a list and descriptions of these functions
@@ -889,8 +890,8 @@ class SonoUnoGUI (gui.FrameDesign):
         '''
         Este metodo envia la frecuencia al actuador a través de Arduino
         '''
-        var = int((150-60)*(var2)+60)
-        print (var)
+        #var = int((150-60)*(var2)+60)
+        var = int((150-45)*var2)+45
         self.arduino.write(f'{var}\n'.encode())
 
     def _actuator_stop(self):
